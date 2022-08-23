@@ -1,28 +1,39 @@
 #!/usr/bin/env python3
-import os
 
 import aws_cdk as cdk
 
-from cdk_beanstalk_with_docker.cdk_beanstalk_with_docker_stack import CdkBeanstalkWithDockerStack
-
+from cdk_beanstalk_with_docker.CdkBeanstalkAppStack import BeanstalkEnvStack, BeanstalkAppStack, BeanstalkS3Stack
 
 app = cdk.App()
-CdkBeanstalkWithDockerStack(app, "CdkBeanstalkWithDockerStack",
-    # If you don't specify 'env', this stack will be environment-agnostic.
-    # Account/Region-dependent features and context lookups will not work,
-    # but a single synthesized template can be deployed anywhere.
 
-    # Uncomment the next line to specialize this stack for the AWS Account
-    # and Region that are implied by the current CLI configuration.
+# a dictionary to store properties
+props = {
+    'namespace': 'ElasticBeanstalk',
+    'application_name': 'GettingStartedApp2',
+    'environment_name': 'GettingStartedEnv2',
+    'solution_stack_name': '64bit Amazon Linux 2 v3.4.18 running Docker',
+    's3_asset': 'assets'
+}
 
-    #env=cdk.Environment(account=os.getenv('CDK_DEFAULT_ACCOUNT'), region=os.getenv('CDK_DEFAULT_REGION')),
+s3_bucket = BeanstalkS3Stack(
+    app, f"{props['namespace']}-s3",
+    props
+)
 
-    # Uncomment the next line if you know exactly what Account and Region you
-    # want to deploy the stack to. */
+beanstalk_app = BeanstalkAppStack(
+    app, f"{props['namespace']}-app",
+    s3_bucket.outputs
+)
 
-    #env=cdk.Environment(account='123456789012', region='us-east-1'),
+# the beanstalk app stack has a dependency on the creation of a S3 bucket
+beanstalk_app.add_dependency(s3_bucket)
 
-    # For more information, see https://docs.aws.amazon.com/cdk/latest/guide/environments.html
-    )
+beanstalk_env = BeanstalkEnvStack(
+    app, f"{props['namespace']}-env",
+    props,
+)
+
+# the beanstalk environment stack has a dependency on the creation of a beanstalk app
+beanstalk_env.add_dependency(beanstalk_app)
 
 app.synth()
